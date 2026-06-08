@@ -1,21 +1,32 @@
 // ============================================
-// ENF ENTROPY VAULT - FIXED VERSION
-// Better frequency detection
+// ENF ENTROPY VAULT - COMPLETE WITH ALL FEATURES
+// Includes: ENF detection, Encryption, Entropy Flow, Export, ML Trend
 // ============================================
 
 // DOM Elements
 const micBtn = document.getElementById('micBtn');
 const statusDiv = document.getElementById('status');
 const enfCard = document.getElementById('enfCard');
+const entropyFlowCard = document.getElementById('entropyFlowCard');
 const rngCard = document.getElementById('rngCard');
+const encryptCard = document.getElementById('encryptCard');
 const freqValueSpan = document.getElementById('freqValue');
 const entropyCountSpan = document.getElementById('entropyCount');
 const qualityIndicatorSpan = document.getElementById('qualityIndicator');
-const mlStatusSpan = document.getElementById('mlStatus');
+const mlQualitySpan = document.getElementById('mlQuality');
+const entropyTrendSpan = document.getElementById('entropyTrend');
 const generateBtn = document.getElementById('generateBtn');
+const exportBtn = document.getElementById('exportBtn');
 const copyBtn = document.getElementById('copyBtn');
+const encryptBtn = document.getElementById('encryptBtn');
+const decryptBtn = document.getElementById('decryptBtn');
 const randomKeyDiv = document.getElementById('randomKey');
+const encryptedOutputDiv = document.getElementById('encryptedOutput');
+const decryptedOutputDiv = document.getElementById('decryptedOutput');
+const messageInput = document.getElementById('messageInput');
 const entropyProgressFill = document.getElementById('entropyProgressFill');
+const entropyRateSpan = document.getElementById('entropyRate');
+const totalEntropySpan = document.getElementById('totalEntropy');
 
 // Audio variables
 let audioContext = null;
@@ -27,12 +38,22 @@ let entropyBytes = [];
 let freqHistory = [];
 let sampleRate = 48000;
 
-// Canvas
+// Canvas variables
 let canvas = null;
 let ctx = null;
+let entropyFlowCanvas = null;
+let entropyFlowCtx = null;
 
-// ========== ML MODEL STATUS ==========
-mlStatusSpan.innerHTML = 'Ready (rule-based)';
+// Encryption variables
+let lastRandomKey = null;
+let lastKeyBytes = null;
+let lastEncryptedData = null;
+
+// Entropy flow variables
+let entropyFlowData = new Array(200).fill(0);
+let lastEntropyCount = 0;
+let lastEntropyTime = Date.now();
+let qualityHistory = [];
 
 // ========== MICROPHONE SETUP ==========
 async function enableMicrophone() {
@@ -60,11 +81,13 @@ async function enableMicrophone() {
             await audioContext.resume();
         }
         
-        statusDiv.innerHTML = '✅ Microphone active! Tap your desk near the mic to start detection.';
+        statusDiv.innerHTML = '✅ Microphone active! Place near wall outlet or tap desk.';
         enfCard.classList.remove('hidden');
+        entropyFlowCard.classList.remove('hidden');
         rngCard.classList.remove('hidden');
         
         startENFDetection();
+        setupEntropyVisualization();
         
     } catch (error) {
         statusDiv.innerHTML = '❌ Error: ' + error.message;
@@ -72,23 +95,20 @@ async function enableMicrophone() {
     }
 }
 
-// ========== IMPROVED FREQUENCY DETECTION ==========
+// ========== FREQUENCY DETECTION ==========
 function detectFrequency(timeData, sampleRate) {
     let zeroCrossings = 0;
     let lastSign = 0;
     let started = false;
     let maxAmplitude = 0;
     
-    // First, check if there's any signal
     for (let i = 0; i < timeData.length; i++) {
         const val = Math.abs((timeData[i] - 128) / 128);
         if (val > maxAmplitude) maxAmplitude = val;
     }
     
-    // If signal is too quiet, return null
     if (maxAmplitude < 0.01) return null;
     
-    // Count zero crossings
     for (let i = 0; i < timeData.length; i++) {
         const value = (timeData[i] - 128) / 128;
         const sign = Math.sign(value);
@@ -107,10 +127,7 @@ function detectFrequency(timeData, sampleRate) {
     
     if (zeroCrossings < 4) return null;
     
-    // Calculate frequency
     const freq = (zeroCrossings / 2) * (sampleRate / timeData.length);
-    
-    // Return if in reasonable range (40-70 Hz covers both 50 and 60 Hz grids)
     if (freq > 40 && freq < 70) return freq;
     return null;
 }
@@ -126,7 +143,6 @@ function startENFDetection() {
     let freqBuffer = [];
     let currentSmooth = 50.0;
     let lastGoodFreq = 50.0;
-    let detectionCount = 0;
     
     function update() {
         if (!analyser || audioContext?.state !== 'running') {
@@ -140,7 +156,6 @@ function startENFDetection() {
         const detectedFreq = detectFrequency(timeData, sampleRate);
         
         if (detectedFreq !== null) {
-            detectionCount++;
             freqBuffer.push(detectedFreq);
             if (freqBuffer.length > 20) freqBuffer.shift();
             
@@ -156,23 +171,20 @@ function startENFDetection() {
                 freqHistory.push(currentFrequency);
                 if (freqHistory.length > 500) freqHistory.shift();
                 
-                // Extract entropy from frequency fluctuations
+                // Extract entropy
                 const deviation = Math.abs(currentFrequency - 50.0);
                 const entropyByte = Math.floor(deviation * 10000) & 0xFF;
                 
                 if (entropyByte > 0 && entropyByte < 255 && entropyBytes.length < 4096) {
                     entropyBytes.push(entropyByte);
                     entropyCountSpan.textContent = entropyBytes.length;
+                    totalEntropySpan.textContent = entropyBytes.length;
                     
                     const progressPercent = (entropyBytes.length / 512) * 100;
                     entropyProgressFill.style.width = `${Math.min(progressPercent, 100)}%`;
-                    
-                    if (entropyBytes.length % 50 === 0) {
-                        statusDiv.innerHTML = `✅ Collecting entropy... ${entropyBytes.length}/512 bytes`;
-                    }
                 }
                 
-                // Update quality indicator
+                // Update quality
                 if (entropyBytes.length > 50) {
                     const recent = entropyBytes.slice(-50);
                     const unique = new Set(recent).size;
@@ -182,25 +194,22 @@ function startENFDetection() {
                 }
             }
         } else {
-            // Show last good frequency with indicator
             freqValueSpan.textContent = lastGoodFreq.toFixed(4) + ' (acquiring)';
         }
         
-        // Update graph
+        // Draw graph
         freqDisplayHistory.push(currentFrequency);
         freqDisplayHistory.shift();
         
         ctx.fillStyle = '#0a0a1a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Draw frequency trace
         ctx.beginPath();
         ctx.strokeStyle = '#00d2ff';
         ctx.lineWidth = 2;
         
         for (let i = 0; i < freqDisplayHistory.length; i++) {
             const x = (i / freqDisplayHistory.length) * canvas.width;
-            // Map 49-51Hz to full canvas height
             let y = canvas.height - ((freqDisplayHistory[i] - 49) / 2) * canvas.height;
             y = Math.min(Math.max(y, 0), canvas.height);
             if (i === 0) ctx.moveTo(x, y);
@@ -208,7 +217,6 @@ function startENFDetection() {
         }
         ctx.stroke();
         
-        // Draw 50Hz line
         ctx.beginPath();
         ctx.strokeStyle = '#ff4444';
         ctx.lineWidth = 1.5;
@@ -222,6 +230,77 @@ function startENFDetection() {
     
     update();
 }
+
+// ========== ENTROPY FLOW VISUALIZATION ==========
+function setupEntropyVisualization() {
+    entropyFlowCanvas = document.getElementById('entropyCanvas');
+    entropyFlowCtx = entropyFlowCanvas.getContext('2d');
+    entropyFlowCanvas.width = 800;
+    entropyFlowCanvas.height = 100;
+    updateEntropyFlow();
+}
+
+function updateEntropyFlow() {
+    if (!entropyFlowCtx) return;
+    
+    const currentTime = Date.now();
+    const timeDiff = (currentTime - lastEntropyTime) / 1000;
+    
+    if (timeDiff > 0 && entropyBytes.length > lastEntropyCount) {
+        const newBytes = entropyBytes.length - lastEntropyCount;
+        const rate = newBytes / timeDiff;
+        entropyRateSpan.innerHTML = rate.toFixed(1);
+        
+        entropyFlowData.push(rate * 10);
+        entropyFlowData.shift();
+        
+        lastEntropyCount = entropyBytes.length;
+        lastEntropyTime = currentTime;
+    }
+    
+    entropyFlowCtx.fillStyle = '#0a0a1a';
+    entropyFlowCtx.fillRect(0, 0, entropyFlowCanvas.width, entropyFlowCanvas.height);
+    
+    entropyFlowCtx.beginPath();
+    entropyFlowCtx.strokeStyle = '#00ff88';
+    entropyFlowCtx.lineWidth = 2;
+    
+    for (let i = 0; i < entropyFlowData.length; i++) {
+        const x = (i / entropyFlowData.length) * entropyFlowCanvas.width;
+        const y = entropyFlowCanvas.height - (entropyFlowData[i] / 5) * entropyFlowCanvas.height;
+        if (i === 0) entropyFlowCtx.moveTo(x, y);
+        else entropyFlowCtx.lineTo(x, Math.min(Math.max(y, 0), entropyFlowCanvas.height));
+    }
+    entropyFlowCtx.stroke();
+    
+    requestAnimationFrame(updateEntropyFlow);
+}
+
+// ========== ML TREND ANALYSIS ==========
+function updateMLPrediction() {
+    if (entropyBytes.length < 50) return;
+    
+    const qualityText = qualityIndicatorSpan.innerHTML;
+    const recentQuality = parseInt(qualityText) || 0;
+    qualityHistory.push(recentQuality);
+    if (qualityHistory.length > 20) qualityHistory.shift();
+    
+    if (qualityHistory.length >= 5) {
+        const recent = qualityHistory.slice(-5);
+        const sum = recent.reduce((a, b) => a + b, 0);
+        const avg = sum / recent.length;
+        mlQualitySpan.innerHTML = avg.toFixed(0) + '%';
+        
+        if (qualityHistory.length >= 10) {
+            const oldAvg = qualityHistory.slice(-10, -5).reduce((a, b) => a + b, 0) / 5;
+            if (avg > oldAvg + 5) entropyTrendSpan.innerHTML = '📈 Improving';
+            else if (avg < oldAvg - 5) entropyTrendSpan.innerHTML = '📉 Declining';
+            else entropyTrendSpan.innerHTML = '➡️ Stable';
+        }
+    }
+}
+
+setInterval(updateMLPrediction, 2000);
 
 // ========== GENERATE RANDOM KEY ==========
 async function generateRandomKey() {
@@ -238,17 +317,125 @@ async function generateRandomKey() {
     const hashBuffer = await crypto.subtle.digest('SHA-256', entropyArray);
     const hashArray = new Uint8Array(hashBuffer);
     
-    const hexString = Array.from(hashArray)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    
+    const hexString = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
     randomKeyDiv.innerHTML = hexString;
-    statusDiv.innerHTML = "✅ Key generated! Copy it or generate another.";
     
-    // Optional: Clear entropy after use
-    entropyBytes = [];
-    entropyCountSpan.textContent = '0';
-    entropyProgressFill.style.width = '0%';
+    // Save for encryption
+    lastRandomKey = hexString;
+    lastKeyBytes = hashArray;
+    
+    // Show encryption card
+    encryptCard.classList.remove('hidden');
+    
+    statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages.";
+}
+
+// ========== ENCRYPTION FEATURES ==========
+async function encryptWithENFKey() {
+    if (!lastRandomKey || !lastKeyBytes) {
+        statusDiv.innerHTML = '⚠️ Generate a random key first!';
+        return;
+    }
+    
+    const message = messageInput.value;
+    if (!message) {
+        statusDiv.innerHTML = '⚠️ Type a message to encrypt!';
+        return;
+    }
+    
+    statusDiv.innerHTML = '🔒 Encrypting with ENF entropy key...';
+    
+    try {
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            lastKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encodedMessage = new TextEncoder().encode(message);
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            cryptoKey,
+            encodedMessage
+        );
+        
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encrypted), iv.length);
+        
+        const hexString = Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join('');
+        encryptedOutputDiv.innerHTML = hexString;
+        lastEncryptedData = combined;
+        
+        statusDiv.innerHTML = '✅ Message encrypted with your ENF key!';
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Encryption failed: ' + error.message;
+    }
+}
+
+async function decryptWithENFKey() {
+    if (!lastKeyBytes || !lastEncryptedData) {
+        statusDiv.innerHTML = '⚠️ No encrypted message found!';
+        return;
+    }
+    
+    statusDiv.innerHTML = '🔓 Decrypting with ENF entropy key...';
+    
+    try {
+        const iv = lastEncryptedData.slice(0, 12);
+        const encryptedData = lastEncryptedData.slice(12);
+        
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            lastKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            cryptoKey,
+            encryptedData
+        );
+        
+        const message = new TextDecoder().decode(decrypted);
+        decryptedOutputDiv.innerHTML = message;
+        statusDiv.innerHTML = '✅ Message decrypted successfully!';
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Decryption failed: ' + error.message;
+    }
+}
+
+// ========== EXPORT ENTROPY ==========
+function exportEntropy() {
+    if (entropyBytes.length === 0) {
+        statusDiv.innerHTML = '⚠️ No entropy collected yet!';
+        return;
+    }
+    
+    const exportData = {
+        timestamp: new Date().toISOString(),
+        entropyBytes: Array.from(entropyBytes),
+        frequencyHistory: freqHistory.slice(-100),
+        totalEntropy: entropyBytes.length,
+        quality: qualityIndicatorSpan.innerHTML,
+        source: "ENF Entropy Vault - Grid Frequency Fluctuations"
+    };
+    
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `enf-entropy-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    statusDiv.innerHTML = '✅ Entropy exported for research!';
 }
 
 // ========== COPY TO CLIPBOARD ==========
@@ -281,6 +468,9 @@ window.addEventListener('beforeunload', () => {
 // ========== EVENT LISTENERS ==========
 micBtn.addEventListener('click', enableMicrophone);
 generateBtn.addEventListener('click', generateRandomKey);
+exportBtn.addEventListener('click', exportEntropy);
 copyBtn.addEventListener('click', copyToClipboard);
+encryptBtn.addEventListener('click', encryptWithENFKey);
+decryptBtn.addEventListener('click', decryptWithENFKey);
 
 console.log('ENF Entropy Vault loaded - Click "Enable Microphone" to start');
