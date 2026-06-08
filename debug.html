@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENF Debug - See What Your Mic Hears</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0a0a2a;
+            color: #00ff88;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        button {
+            background: #00d2ff;
+            color: #0a0a2a;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .freq-display {
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            font-family: monospace;
+        }
+        .status {
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        canvas {
+            background: #0a0a1a;
+            border-radius: 8px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .log {
+            background: #0a0a1a;
+            padding: 10px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .good { color: #00ff88; }
+        .bad { color: #ff6666; }
+        .info { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 ENF MICROPHONE DEBUGGER</h1>
+        <p>This tool shows you exactly what frequencies your microphone is picking up.</p>
+
+        <div class="card">
+            <h2>Step 1: Enable Microphone</h2>
+            <button id="micBtn">🎤 Enable Microphone</button>
+            <div id="status" class="status">⚪ Not enabled</div>
+        </div>
+
+        <div id="debugCard" class="card" style="display:none;">
+            <h2>Live Frequency Detection</h2>
+            <div class="freq-display" id="freqDisplay">--.-- Hz</div>
+            <div id="detectionStatus" class="status">Waiting for signal...</div>
+            <canvas id="spectrumCanvas" width="800" height="200"></canvas>
+            
+            <h3>What's happening?</h3>
+            <div id="explanation" class="status"></div>
+            
+            <h3>Raw Detection Log</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const micBtn = document.getElementById('micBtn');
+        const statusDiv = document.getElementById('status');
+        const debugCard = document.getElementById('debugCard');
+        const freqDisplay = document.getElementById('freqDisplay');
+        const detectionStatus = document.getElementById('detectionStatus');
+        const explanationDiv = document.getElementById('explanation');
+        const logDiv = document.getElementById('log');
+        
+        // Audio variables
+        let audioContext = null;
+        let mediaStream = null;
+        let analyser = null;
+        let animationId = null;
+        let canvas = null;
+        let ctx = null;
+        
+        // Log function
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `[${time}] ${message}`;
+            if (type === 'good') entry.style.color = '#00ff88';
+            else if (type === 'bad') entry.style.color = '#ff6666';
+            else entry.style.color = '#ffaa00';
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        // ========== ENF FREQUENCY DETECTION ==========
+        function detectFrequency(timeData, sampleRate) {
+            let zeroCrossings = 0;
+            let lastSign = 0;
+            let started = false;
+            let maxAmplitude = 0;
+            
+            // Find max amplitude
+            for (let i = 0; i < timeData.length; i++) {
+                const val = Math.abs((timeData[i] - 128) / 128);
+                if (val > maxAmplitude) maxAmplitude = val;
+            }
+            
+            // Count zero crossings
+            for (let i = 0; i < timeData.length; i++) {
+                const value = (timeData[i] - 128) / 128;
+                const sign = Math.sign(value);
+                
+                if (!started && Math.abs(value) > 0.01) {
+                    started = true;
+                    lastSign = sign;
+                    continue;
+                }
+                
+                if (started && sign !== 0 && sign !== lastSign) {
+                    zeroCrossings++;
+                    lastSign = sign;
+                }
+            }
+            
+            if (zeroCrossings < 4) return null;
+            
+            const freq = (zeroCrossings / 2) * (sampleRate / timeData.length);
+            
+            if (freq > 40 && freq < 70) return freq;
+            return null;
+        }
+        
+        // ========== GET DOMINANT FREQUENCY FROM FFT ==========
+        function getDominantFrequency(timeData, sampleRate) {
+            // Convert to float array
+            const floatData = new Float32Array(timeData.length);
+            for (let i = 0; i < timeData.length; i++) {
+                floatData[i] = (timeData[i] - 128) / 128;
+            }
+            
+            // Simple FFT approximation (find peaks in time domain)
+            // This is more reliable for low frequencies
+            
+            let peaks = 0;
+            let lastPeak = -1;
+            
+            for (let i = 1; i < floatData.length - 1; i++) {
+                if (floatData[i] > floatData[i-1] && floatData[i] > floatData[i+1] && floatData[i] > 0.1) {
+                    peaks++;
+                    lastPeak = i;
+                }
+            }
+            
+            if (peaks < 2) return null;
+            
+            // Average period between peaks
+            // This is a simplified approach
+            const freq = (peaks / 2) * (sampleRate / floatData.length);
+            
+            if (freq > 40 && freq < 70) return freq;
+            return null;
+        }
+        
+        // ========== DRAW SPECTRUM VISUALIZATION ==========
+        function drawSpectrum(timeData, sampleRate, detectedFreq) {
+            if (!ctx) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw the waveform
+            ctx.beginPath();
+            ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i < timeData.length; i++) {
+                const x = (i / timeData.length) * width;
+                const y = height/2 + ((timeData[i] - 128) / 128) * (height/2);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Mark detected frequency if present
+            if (detectedFreq !== null) {
+                ctx.fillStyle = '#00ff88';
+                ctx.font = '12px monospace';
+                ctx.fillText(`Detected: ${detectedFreq.toFixed(2)} Hz`, 10, 20);
+            }
+        }
+        
+        // ========== START DEBUGGING ==========
+        async function startDebug() {
+            addLog('Starting microphone debug...', 'info');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+                
+                mediaStream = stream;
+                addLog('✅ Microphone access granted', 'good');
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const sampleRate = audioContext.sampleRate;
+                addLog(`Sample rate: ${sampleRate} Hz`, 'info');
+                
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 4096;
+                source.connect(analyser);
+                
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    addLog('Audio context resumed', 'good');
+                }
+                
+                statusDiv.innerHTML = '✅ Microphone active - listening...';
+                debugCard.style.display = 'block';
+                
+                canvas = document.getElementById('spectrumCanvas');
+                ctx = canvas.getContext('2d');
+                canvas.width = 800;
+                canvas.height = 200;
+                
+                let detectionCount = 0;
+                let lastFreq = null;
+                let noDetectionCount = 0;
+                
+                function update() {
+                    if (!analyser || audioContext?.state !== 'running') {
+                        requestAnimationFrame(update);
+                        return;
+                    }
+                    
+                    const timeData = new Uint8Array(analyser.fftSize);
+                    analyser.getByteTimeDomainData(timeData);
+                    
+                    const detectedFreq = detectFrequency(timeData, sampleRate);
+                    const dominantFreq = getDominantFrequency(timeData, sampleRate);
+                    
+                    drawSpectrum(timeData, sampleRate, detectedFreq || dominantFreq);
+                    
+                    if (detectedFreq !== null) {
+                        detectionCount++;
+                        lastFreq = detectedFreq;
+                        noDetectionCount = 0;
+                        freqDisplay.innerHTML = detectedFreq.toFixed(4);
+                        freqDisplay.style.color = '#00ff88';
+                        detectionStatus.innerHTML = `✅ DETECTED! Frequency: ${detectedFreq.toFixed(4)} Hz | Signal strength: good`;
+                        detectionStatus.style.background = 'rgba(0,255,0,0.2)';
+                        
+                        explanationDiv.innerHTML = `
+                            <strong>✅ Your microphone is working!</strong><br>
+                            Detected frequency: ${detectedFreq.toFixed(4)} Hz<br><br>
+                            This means your code is correct. The issue is that your room's natural 50Hz hum is too quiet for your microphone.<br><br>
+                            <strong>Solutions:</strong><br>
+                            1. Move laptop near a wall outlet or running appliance<br>
+                            2. Use a phone to play a 50Hz test tone near the mic<br>
+                            3. Use an external USB microphone (better low-frequency response)
+                        `;
+                        
+                    } else {
+                        noDetectionCount++;
+                        freqDisplay.innerHTML = '--.--';
+                        freqDisplay.style.color = '#ff6666';
+                        
+                        if (noDetectionCount < 30) {
+                            detectionStatus.innerHTML = `⏳ Listening for frequency... (${noDetectionCount}/30 samples)`;
+                            detectionStatus.style.background = 'rgba(255,165,0,0.2)';
+                        } else {
+                            detectionStatus.innerHTML = `❌ No frequency detected. Make a sound near the microphone (tap, whistle, talk) to test.`;
+                            detectionStatus.style.background = 'rgba(255,0,0,0.2)';
+                        }
+                        
+                        if (noDetectionCount === 60) {
+                            addLog('⚠️ No frequency detected for 60 samples', 'bad');
+                            addLog('Try: tapping desk, playing 50Hz tone from phone, or moving to noisy appliance', 'info');
+                        }
+                    }
+                    
+                    animationId = requestAnimationFrame(update);
+                }
+                
+                update();
+                
+            } catch (error) {
+                addLog(`❌ ERROR: ${error.message}`, 'bad');
+                statusDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        // ========== CLEANUP ==========
+        function cleanup() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        // ========== EVENT LISTENERS ==========
+        micBtn.addEventListener('click', () => {
+            cleanup();
+            startDebug();
+        });
+        
+        window.addEventListener('beforeunload', cleanup);
+        
+        addLog('Debug tool ready. Click "Enable Microphone" to start.', 'info');
+        addLog('This tool shows you exactly what frequencies your mic picks up.', 'info');
+    </script>
+</body>
+</html>
