@@ -1,337 +1,476 @@
 // ============================================
-// ENF ENTROPY VAULT - SIMPLIFIED WORKING VERSION
+// ENF ENTROPY VAULT - COMPLETE WITH ENCRYPTION
+// Encryption demo shows automatically after key generation
 // ============================================
 
-// Wait for page to load completely
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded - setting up...');
-    
-    // Get elements
-    const micBtn = document.getElementById('micBtn');
-    const statusDiv = document.getElementById('status');
-    const enfCard = document.getElementById('enfCard');
-    const rngCard = document.getElementById('rngCard');
-    const generateBtn = document.getElementById('generateBtn');
-    const randomKeyDiv = document.getElementById('randomKey');
-    const freqValueSpan = document.getElementById('freqValue');
-    const entropyCountSpan = document.getElementById('entropyCount');
-    const entropyProgressFill = document.getElementById('entropyProgressFill');
-    
-    // Audio variables
-    let audioContext = null;
-    let mediaStream = null;
-    let analyser = null;
-    let animationId = null;
-    let currentFrequency = 50.0;
-    let entropyBytes = [];
-    let sampleRate = 48000;
-    
-    // Canvas
-    let canvas = null;
-    let ctx = null;
-    
-    // Check if button exists
-    if (!micBtn) {
-        console.error('Microphone button not found!');
-        statusDiv.innerHTML = '❌ Error: Button not found';
-        return;
-    }
-    
-    console.log('Button found, adding click listener...');
-    
-    // ========== MICROPHONE SETUP ==========
-    async function enableMicrophone() {
-        console.log('Enable Microphone clicked!');
+// DOM Elements
+const micBtn = document.getElementById('micBtn');
+const statusDiv = document.getElementById('status');
+const enfCard = document.getElementById('enfCard');
+const entropyFlowCard = document.getElementById('entropyFlowCard');
+const rngCard = document.getElementById('rngCard');
+const encryptCard = document.getElementById('encryptCard');
+const freqValueSpan = document.getElementById('freqValue');
+const entropyCountSpan = document.getElementById('entropyCount');
+const qualityIndicatorSpan = document.getElementById('qualityIndicator');
+const mlQualitySpan = document.getElementById('mlQuality');
+const entropyTrendSpan = document.getElementById('entropyTrend');
+const generateBtn = document.getElementById('generateBtn');
+const exportBtn = document.getElementById('exportBtn');
+const copyBtn = document.getElementById('copyBtn');
+const encryptBtn = document.getElementById('encryptBtn');
+const decryptBtn = document.getElementById('decryptBtn');
+const randomKeyDiv = document.getElementById('randomKey');
+const encryptedOutputDiv = document.getElementById('encryptedOutput');
+const decryptedOutputDiv = document.getElementById('decryptedOutput');
+const messageInput = document.getElementById('messageInput');
+const entropyProgressFill = document.getElementById('entropyProgressFill');
+const entropyRateSpan = document.getElementById('entropyRate');
+const totalEntropySpan = document.getElementById('totalEntropy');
+
+// Audio variables
+let audioContext = null;
+let mediaStream = null;
+let analyser = null;
+let animationId = null;
+let currentFrequency = 50.0;
+let entropyBytes = [];
+let freqHistory = [];
+let sampleRate = 48000;
+
+// Canvas variables
+let canvas = null;
+let ctx = null;
+let entropyFlowCanvas = null;
+let entropyFlowCtx = null;
+
+// Encryption variables
+let lastRandomKey = null;
+let lastKeyBytes = null;
+let lastEncryptedData = null;
+
+// Entropy flow variables
+let entropyFlowData = new Array(200).fill(0);
+let lastEntropyCount = 0;
+let lastEntropyTime = Date.now();
+let qualityHistory = [];
+
+// ========== MICROPHONE SETUP ==========
+async function enableMicrophone() {
+    try {
         statusDiv.innerHTML = '🎤 Requesting microphone access...';
         
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false
-                }
-            });
-            
-            console.log('Microphone access granted');
-            mediaStream = stream;
-            
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            sampleRate = audioContext.sampleRate;
-            console.log('Sample rate:', sampleRate);
-            
-            const source = audioContext.createMediaStreamSource(stream);
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 2048;
-            source.connect(analyser);
-            
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
             }
-            
-            statusDiv.innerHTML = '✅ Microphone active! Place near wall outlet or tap desk.';
-            enfCard.classList.remove('hidden');
-            rngCard.classList.remove('hidden');
-            
-            startENFDetection();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            statusDiv.innerHTML = '❌ Error: ' + error.message;
+        });
+        
+        mediaStream = stream;
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        sampleRate = audioContext.sampleRate;
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+        
+        statusDiv.innerHTML = '✅ Microphone active! Place near wall outlet or tap desk.';
+        enfCard.classList.remove('hidden');
+        entropyFlowCard.classList.remove('hidden');
+        rngCard.classList.remove('hidden');
+        
+        startENFDetection();
+        setupEntropyVisualization();
+        
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Error: ' + error.message;
+        console.error(error);
+    }
+}
+
+// ========== FREQUENCY DETECTION ==========
+function detectFrequency(timeData, sampleRate) {
+    let zeroCrossings = 0;
+    let lastSign = 0;
+    let started = false;
+    let maxAmplitude = 0;
+    
+    for (let i = 0; i < timeData.length; i++) {
+        const val = Math.abs((timeData[i] - 128) / 128);
+        if (val > maxAmplitude) maxAmplitude = val;
+    }
+    
+    if (maxAmplitude < 0.01) return null;
+    
+    for (let i = 0; i < timeData.length; i++) {
+        const value = (timeData[i] - 128) / 128;
+        const sign = Math.sign(value);
+        
+        if (!started && Math.abs(value) > 0.01) {
+            started = true;
+            lastSign = sign;
+            continue;
+        }
+        
+        if (started && sign !== 0 && sign !== lastSign) {
+            zeroCrossings++;
+            lastSign = sign;
         }
     }
     
-    // ========== FREQUENCY DETECTION ==========
-    function detectFrequency(timeData, sampleRate) {
-        let zeroCrossings = 0;
-        let lastSign = 0;
-        let started = false;
-        let maxAmplitude = 0;
-        
-        for (let i = 0; i < timeData.length; i++) {
-            const val = Math.abs((timeData[i] - 128) / 128);
-            if (val > maxAmplitude) maxAmplitude = val;
-        }
-        
-        if (maxAmplitude < 0.01) return null;
-        
-        for (let i = 0; i < timeData.length; i++) {
-            const value = (timeData[i] - 128) / 128;
-            const sign = Math.sign(value);
-            
-            if (!started && Math.abs(value) > 0.01) {
-                started = true;
-                lastSign = sign;
-                continue;
-            }
-            
-            if (started && sign !== 0 && sign !== lastSign) {
-                zeroCrossings++;
-                lastSign = sign;
-            }
-        }
-        
-        if (zeroCrossings < 4) return null;
-        
-        const freq = (zeroCrossings / 2) * (sampleRate / timeData.length);
-        if (freq > 40 && freq < 70) return freq;
-        return null;
-    }
+    if (zeroCrossings < 4) return null;
     
-    // ========== START ENF DETECTION ==========
-    function startENFDetection() {
-        canvas = document.getElementById('enfCanvas');
-        ctx = canvas.getContext('2d');
-        canvas.width = 800;
-        canvas.height = 200;
-        
-        const freqDisplayHistory = new Array(200).fill(50.0);
-        let freqBuffer = [];
-        let currentSmooth = 50.0;
-        let lastGoodFreq = 50.0;
-        
-        function update() {
-            if (!analyser || audioContext?.state !== 'running') {
-                animationId = requestAnimationFrame(update);
-                return;
-            }
-            
-            const timeData = new Uint8Array(analyser.fftSize);
-            analyser.getByteTimeDomainData(timeData);
-            
-            const detectedFreq = detectFrequency(timeData, sampleRate);
-            
-            if (detectedFreq !== null) {
-                freqBuffer.push(detectedFreq);
-                if (freqBuffer.length > 20) freqBuffer.shift();
-                
-                if (freqBuffer.length > 0) {
-                    let sum = 0;
-                    for (let i = 0; i < freqBuffer.length; i++) sum += freqBuffer[i];
-                    const smoothedFreq = sum / freqBuffer.length;
-                    currentSmooth = currentSmooth * 0.7 + smoothedFreq * 0.3;
-                    currentFrequency = currentSmooth;
-                    lastGoodFreq = currentFrequency;
-                    
-                    if (freqValueSpan) freqValueSpan.textContent = currentFrequency.toFixed(4);
-                    
-                    // Extract entropy
-                    const deviation = Math.abs(currentFrequency - 50.0);
-                    const entropyByte = Math.floor(deviation * 10000) & 0xFF;
-                    
-                    if (entropyByte > 0 && entropyByte < 255 && entropyBytes.length < 4096) {
-                        entropyBytes.push(entropyByte);
-                        if (entropyCountSpan) entropyCountSpan.textContent = entropyBytes.length;
-                        
-                        const progressPercent = (entropyBytes.length / 512) * 100;
-                        if (entropyProgressFill) entropyProgressFill.style.width = `${Math.min(progressPercent, 100)}%`;
-                    }
-                }
-            } else {
-                if (freqValueSpan) freqValueSpan.textContent = lastGoodFreq.toFixed(4) + ' (acquiring)';
-            }
-            
-            // Draw graph
-            freqDisplayHistory.push(currentFrequency);
-            freqDisplayHistory.shift();
-            
-            ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.beginPath();
-            ctx.strokeStyle = '#00d2ff';
-            ctx.lineWidth = 2;
-            
-            for (let i = 0; i < freqDisplayHistory.length; i++) {
-                const x = (i / freqDisplayHistory.length) * canvas.width;
-                let y = canvas.height - ((freqDisplayHistory[i] - 49) / 2) * canvas.height;
-                y = Math.min(Math.max(y, 0), canvas.height);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.strokeStyle = '#ff4444';
-            ctx.lineWidth = 1.5;
-            const nominalY = canvas.height - ((50 - 49) / 2) * canvas.height;
-            ctx.moveTo(0, nominalY);
-            ctx.lineTo(canvas.width, nominalY);
-            ctx.stroke();
-            
+    const freq = (zeroCrossings / 2) * (sampleRate / timeData.length);
+    if (freq > 40 && freq < 70) return freq;
+    return null;
+}
+
+// ========== START ENF DETECTION ==========
+function startENFDetection() {
+    canvas = document.getElementById('enfCanvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 200;
+    
+    const freqDisplayHistory = new Array(200).fill(50.0);
+    let freqBuffer = [];
+    let currentSmooth = 50.0;
+    let lastGoodFreq = 50.0;
+    
+    function update() {
+        if (!analyser || audioContext?.state !== 'running') {
             animationId = requestAnimationFrame(update);
-        }
-        
-        update();
-    }
-    
-    // ========== GENERATE RANDOM KEY ==========
-    async function generateRandomKey() {
-        if (entropyBytes.length < 256) {
-            randomKeyDiv.innerHTML = `Need more entropy... ${entropyBytes.length}/256 bytes. Keep microphone running.`;
             return;
         }
         
-        randomKeyDiv.innerHTML = "Generating cryptographic key...";
+        const timeData = new Uint8Array(analyser.fftSize);
+        analyser.getByteTimeDomainData(timeData);
         
-        const entropyArray = new Uint8Array(entropyBytes);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', entropyArray);
-        const hashArray = new Uint8Array(hashBuffer);
+        const detectedFreq = detectFrequency(timeData, sampleRate);
         
-        const hexString = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
-        randomKeyDiv.innerHTML = hexString;
+        if (detectedFreq !== null) {
+            freqBuffer.push(detectedFreq);
+            if (freqBuffer.length > 20) freqBuffer.shift();
+            
+            if (freqBuffer.length > 0) {
+                let sum = 0;
+                for (let i = 0; i < freqBuffer.length; i++) sum += freqBuffer[i];
+                const smoothedFreq = sum / freqBuffer.length;
+                currentSmooth = currentSmooth * 0.7 + smoothedFreq * 0.3;
+                currentFrequency = currentSmooth;
+                lastGoodFreq = currentFrequency;
+                
+                freqValueSpan.textContent = currentFrequency.toFixed(4);
+                freqHistory.push(currentFrequency);
+                if (freqHistory.length > 500) freqHistory.shift();
+                
+                // Extract entropy
+                const deviation = Math.abs(currentFrequency - 50.0);
+                const entropyByte = Math.floor(deviation * 10000) & 0xFF;
+                
+                if (entropyByte > 0 && entropyByte < 255 && entropyBytes.length < 4096) {
+                    entropyBytes.push(entropyByte);
+                    entropyCountSpan.textContent = entropyBytes.length;
+                    totalEntropySpan.textContent = entropyBytes.length;
+                    
+                    const progressPercent = (entropyBytes.length / 512) * 100;
+                    entropyProgressFill.style.width = `${Math.min(progressPercent, 100)}%`;
+                }
+                
+                // Update quality
+                if (entropyBytes.length > 50) {
+                    const recent = entropyBytes.slice(-50);
+                    const unique = new Set(recent).size;
+                    const quality = (unique / 50) * 100;
+                    qualityIndicatorSpan.innerHTML = quality.toFixed(0) + '%';
+                    qualityIndicatorSpan.style.color = quality > 50 ? '#00ff88' : (quality > 25 ? '#ffaa00' : '#ff6666');
+                }
+            }
+        } else {
+            freqValueSpan.textContent = lastGoodFreq.toFixed(4) + ' (acquiring)';
+        }
         
-        // Show encryption card
-        const encryptCard = document.getElementById('encryptCard');
-        if (encryptCard) encryptCard.classList.remove('hidden');
+        // Draw graph
+        freqDisplayHistory.push(currentFrequency);
+        freqDisplayHistory.shift();
+        
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = '#00d2ff';
+        ctx.lineWidth = 2;
+        
+        for (let i = 0; i < freqDisplayHistory.length; i++) {
+            const x = (i / freqDisplayHistory.length) * canvas.width;
+            let y = canvas.height - ((freqDisplayHistory[i] - 49) / 2) * canvas.height;
+            y = Math.min(Math.max(y, 0), canvas.height);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 1.5;
+        const nominalY = canvas.height - ((50 - 49) / 2) * canvas.height;
+        ctx.moveTo(0, nominalY);
+        ctx.lineTo(canvas.width, nominalY);
+        ctx.stroke();
+        
+        animationId = requestAnimationFrame(update);
     }
     
-    // ========== ADD EVENT LISTENERS ==========
-    micBtn.addEventListener('click', enableMicrophone);
+    update();
+}
+
+// ========== ENTROPY FLOW VISUALIZATION ==========
+function setupEntropyVisualization() {
+    entropyFlowCanvas = document.getElementById('entropyCanvas');
+    entropyFlowCtx = entropyFlowCanvas.getContext('2d');
+    entropyFlowCanvas.width = 800;
+    entropyFlowCanvas.height = 100;
+    updateEntropyFlow();
+}
+
+function updateEntropyFlow() {
+    if (!entropyFlowCtx) return;
     
-    if (generateBtn) {
-        generateBtn.addEventListener('click', generateRandomKey);
+    const currentTime = Date.now();
+    const timeDiff = (currentTime - lastEntropyTime) / 1000;
+    
+    if (timeDiff > 0 && entropyBytes.length > lastEntropyCount) {
+        const newBytes = entropyBytes.length - lastEntropyCount;
+        const rate = newBytes / timeDiff;
+        entropyRateSpan.innerHTML = rate.toFixed(1);
+        
+        entropyFlowData.push(rate * 10);
+        entropyFlowData.shift();
+        
+        lastEntropyCount = entropyBytes.length;
+        lastEntropyTime = currentTime;
     }
     
-    // Copy button
-    const copyBtn = document.getElementById('copyBtn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-            const keyText = randomKeyDiv.innerText;
-            if (keyText && keyText !== '--' && !keyText.includes('Need')) {
-                navigator.clipboard.writeText(keyText);
-                statusDiv.innerHTML = '📋 Key copied!';
-            }
-        });
+    entropyFlowCtx.fillStyle = '#0a0a1a';
+    entropyFlowCtx.fillRect(0, 0, entropyFlowCanvas.width, entropyFlowCanvas.height);
+    
+    entropyFlowCtx.beginPath();
+    entropyFlowCtx.strokeStyle = '#00ff88';
+    entropyFlowCtx.lineWidth = 2;
+    
+    for (let i = 0; i < entropyFlowData.length; i++) {
+        const x = (i / entropyFlowData.length) * entropyFlowCanvas.width;
+        const y = entropyFlowCanvas.height - (entropyFlowData[i] / 5) * entropyFlowCanvas.height;
+        if (i === 0) entropyFlowCtx.moveTo(x, y);
+        else entropyFlowCtx.lineTo(x, Math.min(Math.max(y, 0), entropyFlowCanvas.height));
+    }
+    entropyFlowCtx.stroke();
+    
+    requestAnimationFrame(updateEntropyFlow);
+}
+
+// ========== ML TREND ANALYSIS ==========
+function updateMLPrediction() {
+    if (entropyBytes.length < 50) return;
+    
+    const qualityText = qualityIndicatorSpan.innerHTML;
+    const recentQuality = parseInt(qualityText) || 0;
+    qualityHistory.push(recentQuality);
+    if (qualityHistory.length > 20) qualityHistory.shift();
+    
+    if (qualityHistory.length >= 5) {
+        const recent = qualityHistory.slice(-5);
+        const sum = recent.reduce((a, b) => a + b, 0);
+        const avg = sum / recent.length;
+        mlQualitySpan.innerHTML = avg.toFixed(0) + '%';
+        
+        if (qualityHistory.length >= 10) {
+            const oldAvg = qualityHistory.slice(-10, -5).reduce((a, b) => a + b, 0) / 5;
+            if (avg > oldAvg + 5) entropyTrendSpan.innerHTML = '📈 Improving';
+            else if (avg < oldAvg - 5) entropyTrendSpan.innerHTML = '📉 Declining';
+            else entropyTrendSpan.innerHTML = '➡️ Stable';
+        }
+    }
+}
+
+setInterval(updateMLPrediction, 2000);
+
+// ========== GENERATE RANDOM KEY ==========
+async function generateRandomKey() {
+    if (entropyBytes.length < 256) {
+        randomKeyDiv.innerHTML = `⏳ Need more entropy... ${entropyBytes.length}/256 bytes. Keep microphone running.`;
+        statusDiv.innerHTML = `Collecting more entropy... ${entropyBytes.length}/256 bytes`;
+        return;
     }
     
-    // Encryption buttons
-    const encryptBtn = document.getElementById('encryptBtn');
-    const decryptBtn = document.getElementById('decryptBtn');
-    const messageInput = document.getElementById('messageInput');
-    const encryptedOutput = document.getElementById('encryptedOutput');
-    const decryptedOutput = document.getElementById('decryptedOutput');
+    randomKeyDiv.innerHTML = "🔐 Generating cryptographic key from grid entropy...";
+    statusDiv.innerHTML = "Generating random key...";
     
-    let lastKeyBytes = null;
-    let lastEncryptedData = null;
+    const entropyArray = new Uint8Array(entropyBytes);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', entropyArray);
+    const hashArray = new Uint8Array(hashBuffer);
     
-    // Save key when generated
-    const originalGenerate = generateRandomKey;
-    window.generateRandomKey = generateRandomKey;
+    const hexString = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
+    randomKeyDiv.innerHTML = hexString;
     
-    if (encryptBtn) {
-        encryptBtn.addEventListener('click', async () => {
-            // Get the current key from the page
-            const keyHex = randomKeyDiv.innerText;
-            if (!keyHex || keyHex === '--' || keyHex.includes('Need')) {
-                statusDiv.innerHTML = '⚠️ Generate a random key first!';
-                return;
-            }
-            
-            const message = messageInput.value;
-            if (!message) {
-                statusDiv.innerHTML = '⚠️ Type a message to encrypt!';
-                return;
-            }
-            
-            // Convert hex to bytes
-            const keyBytes = new Uint8Array(32);
-            for (let i = 0; i < 32; i++) {
-                keyBytes[i] = parseInt(keyHex.substr(i*2, 2), 16);
-            }
-            lastKeyBytes = keyBytes;
-            
-            statusDiv.innerHTML = '🔒 Encrypting...';
-            
-            try {
-                const cryptoKey = await crypto.subtle.importKey(
-                    'raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
-                );
-                
-                const iv = crypto.getRandomValues(new Uint8Array(12));
-                const encoded = new TextEncoder().encode(message);
-                const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, cryptoKey, encoded);
-                
-                const combined = new Uint8Array(iv.length + encrypted.byteLength);
-                combined.set(iv);
-                combined.set(new Uint8Array(encrypted), iv.length);
-                
-                encryptedOutput.innerHTML = Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join('');
-                lastEncryptedData = combined;
-                statusDiv.innerHTML = '✅ Encrypted with your ENF key!';
-            } catch (e) {
-                statusDiv.innerHTML = '❌ Encryption failed: ' + e.message;
-            }
-        });
+    // Save for encryption
+    lastRandomKey = hexString;
+    lastKeyBytes = hashArray;
+    
+    // SHOW ENCRYPTION CARD - THIS IS THE FIX
+    encryptCard.classList.remove('hidden');
+    
+    statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages below.";
+}
+
+// ========== ENCRYPTION FEATURES ==========
+async function encryptWithENFKey() {
+    if (!lastRandomKey || !lastKeyBytes) {
+        statusDiv.innerHTML = '⚠️ Generate a random key first using the button above!';
+        return;
     }
     
-    if (decryptBtn) {
-        decryptBtn.addEventListener('click', async () => {
-            if (!lastKeyBytes || !lastEncryptedData) {
-                statusDiv.innerHTML = '⚠️ No encrypted message found!';
-                return;
-            }
-            
-            statusDiv.innerHTML = '🔓 Decrypting...';
-            
-            try {
-                const iv = lastEncryptedData.slice(0, 12);
-                const encryptedData = lastEncryptedData.slice(12);
-                
-                const cryptoKey = await crypto.subtle.importKey(
-                    'raw', lastKeyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
-                );
-                
-                const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, cryptoKey, encryptedData);
-                const message = new TextDecoder().decode(decrypted);
-                decryptedOutput.innerHTML = message;
-                statusDiv.innerHTML = '✅ Decrypted successfully!';
-            } catch (e) {
-                statusDiv.innerHTML = '❌ Decryption failed: ' + e.message;
-            }
-        });
+    const message = messageInput.value;
+    if (!message) {
+        statusDiv.innerHTML = '⚠️ Type a message to encrypt!';
+        return;
     }
     
-    statusDiv.innerHTML = '⚡ Ready. Click "Enable Microphone" to start.';
-    console.log('Setup complete!');
+    statusDiv.innerHTML = '🔒 Encrypting with ENF entropy key...';
+    
+    try {
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            lastKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encodedMessage = new TextEncoder().encode(message);
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            cryptoKey,
+            encodedMessage
+        );
+        
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(encrypted), iv.length);
+        
+        const hexString = Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join('');
+        encryptedOutputDiv.innerHTML = hexString;
+        lastEncryptedData = combined;
+        
+        statusDiv.innerHTML = '✅ Message encrypted with your ENF key!';
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Encryption failed: ' + error.message;
+    }
+}
+
+async function decryptWithENFKey() {
+    if (!lastKeyBytes || !lastEncryptedData) {
+        statusDiv.innerHTML = '⚠️ No encrypted message found! Encrypt something first.';
+        return;
+    }
+    
+    statusDiv.innerHTML = '🔓 Decrypting with ENF entropy key...';
+    
+    try {
+        const iv = lastEncryptedData.slice(0, 12);
+        const encryptedData = lastEncryptedData.slice(12);
+        
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw',
+            lastKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['encrypt', 'decrypt']
+        );
+        
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            cryptoKey,
+            encryptedData
+        );
+        
+        const message = new TextDecoder().decode(decrypted);
+        decryptedOutputDiv.innerHTML = message;
+        statusDiv.innerHTML = '✅ Message decrypted successfully!';
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Decryption failed: ' + error.message;
+    }
+}
+
+// ========== EXPORT ENTROPY ==========
+function exportEntropy() {
+    if (entropyBytes.length === 0) {
+        statusDiv.innerHTML = '⚠️ No entropy collected yet!';
+        return;
+    }
+    
+    const exportData = {
+        timestamp: new Date().toISOString(),
+        entropyBytes: Array.from(entropyBytes),
+        frequencyHistory: freqHistory.slice(-100),
+        totalEntropy: entropyBytes.length,
+        quality: qualityIndicatorSpan.innerHTML,
+        source: "ENF Entropy Vault - Grid Frequency Fluctuations"
+    };
+    
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `enf-entropy-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    statusDiv.innerHTML = '✅ Entropy exported for research!';
+}
+
+// ========== COPY TO CLIPBOARD ==========
+function copyToClipboard() {
+    const keyText = randomKeyDiv.innerText;
+    if (keyText && keyText !== '--' && !keyText.includes('Need') && !keyText.includes('Generating')) {
+        navigator.clipboard.writeText(keyText);
+        statusDiv.innerHTML = '📋 Key copied to clipboard!';
+        setTimeout(() => {
+            statusDiv.innerHTML = '✅ Microphone active! Listening for grid hum...';
+        }, 2000);
+    } else {
+        statusDiv.innerHTML = '⚠️ Generate a key first before copying.';
+    }
+}
+
+// ========== CLEANUP ==========
+window.addEventListener('beforeunload', () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+    }
+    if (audioContext) {
+        audioContext.close();
+    }
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+    }
 });
+
+// ========== EVENT LISTENERS ==========
+micBtn.addEventListener('click', enableMicrophone);
+generateBtn.addEventListener('click', generateRandomKey);
+exportBtn.addEventListener('click', exportEntropy);
+copyBtn.addEventListener('click', copyToClipboard);
+encryptBtn.addEventListener('click', encryptWithENFKey);
+decryptBtn.addEventListener('click', decryptWithENFKey);
+
+console.log('ENF Entropy Vault loaded - Click "Enable Microphone" to start');
