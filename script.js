@@ -1,6 +1,6 @@
 // ============================================
-// ENF ENTROPY VAULT - COMPLETE WITH ALL FEATURES
-// Includes: ENF detection, Encryption, Entropy Flow, Export, ML Trend
+// ENF ENTROPY VAULT - COMPLETE WITH ENCRYPTION
+// Encryption demo shows automatically after key generation
 // ============================================
 
 // DOM Elements
@@ -324,16 +324,16 @@ async function generateRandomKey() {
     lastRandomKey = hexString;
     lastKeyBytes = hashArray;
     
-    // Show encryption card
+    // SHOW ENCRYPTION CARD - THIS IS THE FIX
     encryptCard.classList.remove('hidden');
     
-    statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages.";
+    statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages below.";
 }
 
 // ========== ENCRYPTION FEATURES ==========
 async function encryptWithENFKey() {
     if (!lastRandomKey || !lastKeyBytes) {
-        statusDiv.innerHTML = '⚠️ Generate a random key first!';
+        statusDiv.innerHTML = '⚠️ Generate a random key first using the button above!';
         return;
     }
     
@@ -378,7 +378,7 @@ async function encryptWithENFKey() {
 
 async function decryptWithENFKey() {
     if (!lastKeyBytes || !lastEncryptedData) {
-        statusDiv.innerHTML = '⚠️ No encrypted message found!';
+        statusDiv.innerHTML = '⚠️ No encrypted message found! Encrypt something first.';
         return;
     }
     
