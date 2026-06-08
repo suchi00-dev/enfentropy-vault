@@ -1,7 +1,3 @@
-// ============================================
-// ENF ENTROPY VAULT - FIXED VERSION
-// Better frequency detection
-// ============================================
 
 // DOM Elements
 const micBtn = document.getElementById('micBtn');
@@ -27,14 +23,14 @@ let entropyBytes = [];
 let freqHistory = [];
 let sampleRate = 48000;
 
-// Canvas
+//Canvas
 let canvas = null;
 let ctx = null;
 
-// ========== ML MODEL STATUS ==========
+//ML MODEL STATUS
 mlStatusSpan.innerHTML = 'Ready (rule-based)';
 
-// ========== MICROPHONE SETUP ==========
+//MICROPHONE SETUP
 async function enableMicrophone() {
     try {
         statusDiv.innerHTML = '🎤 Requesting microphone access...';
@@ -72,14 +68,14 @@ async function enableMicrophone() {
     }
 }
 
-// ========== IMPROVED FREQUENCY DETECTION ==========
+//FREQUENCY DETECTION Stat
 function detectFrequency(timeData, sampleRate) {
     let zeroCrossings = 0;
     let lastSign = 0;
     let started = false;
     let maxAmplitude = 0;
     
-    // First, check if there's any signal
+    //checksignal
     for (let i = 0; i < timeData.length; i++) {
         const val = Math.abs((timeData[i] - 128) / 128);
         if (val > maxAmplitude) maxAmplitude = val;
