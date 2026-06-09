@@ -120,9 +120,5 @@ Debug tool (to test your microphone): https://suchi00-dev.github.io/enfentropy-v
 
 ```bash
 
-git clone https://github.com/suchi00-dev/enfentropy-vault.git
-
-cd enfentropy-vault
-
 python -m http.server 8000
 
