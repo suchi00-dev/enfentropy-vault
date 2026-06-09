@@ -119,15 +119,6 @@ Debug tool (to test your microphone): https://suchi00-dev.github.io/enfentropy-v
 
 
 ```bash
-## References
-
-1. ENF-WHU Dataset for ENF signal analysis
-2. NIST SP 800-90B for entropy source recommendations
-3. Web Crypto API documentation for AES-GCM implementation
-
-git clone https://github.com/suchi00-dev/enfentropy-vault.git
-
-cd enfentropy-vault
 
 python -m http.server 8000
 
