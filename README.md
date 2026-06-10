@@ -2,7 +2,7 @@
 
 
 
-\## True random numbers from the hum in your walls
+\ True random numbers from the hum in your walls
 
 
 
@@ -10,11 +10,10 @@ This web app listens to the 50Hz or 60Hz hum from your wall outlet and turns it 
 
 
 
-\---
 
 
 
-\## How it works
+\ How it works
 
 
 
@@ -30,11 +29,10 @@ No special hardware needed. Just your laptop and a wall outlet.
 
 
 
-\---
 
 
 
-\## Live Demo
+\ Live Demo
 
 
 
@@ -46,11 +44,11 @@ Debug tool (to test your microphone): https://suchi00-dev.github.io/enfentropy-v
 
 
 
-\---
 
 
 
-\## How to use
+
+\ How to use
 
 
 
@@ -68,15 +66,15 @@ Debug tool (to test your microphone): https://suchi00-dev.github.io/enfentropy-v
 
 
 
-\---
 
 
 
-\## Troubleshooting
+
+\ Troubleshooting
 
 
 
-\*\*Frequency shows -- Hz\*\*
+\*\*Frequency shows - Hz\*\*
 
 
 
