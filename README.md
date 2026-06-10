@@ -1,131 +1,201 @@
 # ⚡ ENF Entropy Vault
 
-## True Random Numbers from the 50/60Hz Hum in Your Walls
+> Turn the invisible hum of the power grid into cryptographic randomness — using nothing more than your laptop microphone.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Made with JavaScript](https://img.shields.io/badge/Made%20with-JavaScript-blue.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.15-orange.svg)](https://www.tensorflow.org/js)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-success.svg)](https://suchi00-dev.github.io/enfentropy-vault/)
 
-> *"The hum from your wall outlet can generate cryptographically secure random numbers."*
-
----
-
-## 📖 What is This?
-
-**ENF Entropy Vault** is a browser-based True Random Number Generator (TRNG) that uses the **50Hz/60Hz hum from electrical wall outlets** as a source of physical randomness.
-
-Instead of relying on mathematical formulas (pseudo-random generators) or expensive hardware (traditional TRNGs), this system:
-
-1. **Listens** to the faint 50/60Hz hum from your wall outlet through your laptop's microphone
-2. **Extracts** tiny, unpredictable frequency fluctuations caused by millions of people using electricity
-3. **Converts** these fluctuations into random bytes using zero-crossing detection
-4. **Hashes** them with SHA-256 to produce cryptographically secure 256-bit keys
-
-**No special hardware. No cloud dependencies. Just your laptop and a wall outlet.**
+![JavaScript](https://img.shields.io/badge/Built%20With-JavaScript-F7DF1E)
+![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.x-orange)
+![Status](https://img.shields.io/badge/Status-Experimental-blue)
+![Offline](https://img.shields.io/badge/Works-Offline-success)
 
 ---
 
-## 🎯 Why Does This Matter?
+## What is ENF Entropy Vault?
 
-| Problem | Traditional Solutions | Our Solution |
-|---------|---------------------|--------------|
-| Most "random" numbers are actually pseudo-random | PRNGs require a secret seed | ENF provides true physical randomness |
-| True randomness requires expensive hardware | Hardware TRNGs cost $100-$1000 | Uses your existing laptop microphone |
-| Randomness beacons require internet | Cloud-based entropy sources | Works offline, locally in your browser |
-| Attacks on PRNGs are common (Netscape, OpenSSL) | Software fixes are reactive | ENF entropy is physically unpredictable |
+**ENF Entropy Vault** is a browser-based **True Random Number Generator (TRNG)** that harvests entropy from tiny fluctuations in the electrical grid's **50Hz/60Hz frequency**.
 
-**The 50Hz hum is everywhere, constantly fluctuating, and inherently random.** This project proves you can harness it.
+Instead of relying solely on deterministic algorithms, this project listens to the faint electrical hum around us and transforms those unpredictable variations into cryptographic keys.
+
+No hardware tokens.
+
+No cloud services.
+
+No installations.
+
+Just your browser.
+
+---
+
+## ✨ Features
+
+- 🎤 Captures ambient 50Hz/60Hz ENF signals using your microphone
+- ⚡ Extracts entropy from real-world frequency fluctuations
+- 🔐 Generates cryptographic **256-bit keys**
+- 🛡️ Uses **SHA-256** for entropy conditioning
+- 🔒 Demonstrates **AES-256-GCM encryption**
+- 📊 Performs randomness validation tests
+- 🧠 Includes entropy quality estimation using TensorFlow.js
+- 🌐 Runs entirely inside the browser
+
+---
+
+## How It Works
+
+```
+Power Grid Hum
+       ↓
+ Laptop Microphone
+       ↓
+Frequency Detection
+       ↓
+Entropy Extraction
+       ↓
+    SHA-256
+       ↓
+ 256-bit Random Key
+       ↓
+AES Encryption Demo
+```
 
 ---
 
 ## 🚀 Live Demo
 
-**Try it now:** [https://suchi00-dev.github.io/enfentropy-vault/](https://suchi00-dev.github.io/enfentropy-vault/)
+### Main Application
 
-**Debug Tool:** [https://suchi00-dev.github.io/enfentropy-vault/debug.html](https://suchi00-dev.github.io/enfentropy-vault/debug.html)
+https://suchi00-dev.github.io/enfentropy-vault/
 
----
+### Debug Tool
 
-## 📊 How It Works
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│ │
-│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│ │ Wall │ │ Laptop │ │ Zero │ │ Entropy │ │ SHA-256 │ │
-│ │ Outlet │───▶│ Mic │───▶│ Crossing │───▶│ Bytes │───▶│ Hash │ │
-│ │ 50Hz │ │ │ │ │ │ │ │ │ │
-│ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
-│ │ │ │ │ │ │
-│ ▼ ▼ ▼ ▼ ▼ │
-│ Physical Audible Frequency Random 256-bit │
-│ Hum (50Hz) Signal Detection Bytes Key │
-│ │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-
-
-### Step-by-Step:
-
-| Step | What Happens | Why It Matters |
-|------|--------------|----------------|
-| **1. Capture** | Microphone listens to wall outlet hum | ENF is embedded in ambient audio |
-| **2. Detect** | Zero-crossing algorithm extracts 50Hz frequency | Isolates the grid signal from noise |
-| **3. Fluctuate** | Tracks tiny variations (49.98Hz → 50.02Hz) | These fluctuations ARE the entropy |
-| **4. Harvest** | Converts fluctuations into random bytes | Each byte contains ~2-4 bits of entropy |
-| **5. Hash** | SHA-256 mixes entropy into uniform key | Cryptographic smoothing ensures quality |
-| **6. Validate** | NIST monobit test confirms randomness | Statistical proof of randomness |
+https://suchi00-dev.github.io/enfentropy-vault/debug.html
 
 ---
 
-## 📁 Repository Structure
+## Quick Start
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/suchi00-dev/enfentropy-vault.git
+cd enfentropy-vault
+```
+
+### Run Locally
+
+```bash
+python -m http.server 8000
+```
+
+Open your browser:
+
+```
+http://localhost:8000
+```
+
+---
+
+## Usage
+
+1. Open the application.
+2. Allow microphone access.
+3. Place your laptop near a wall outlet or electrical appliance.
+4. Observe the detected frequency (~50Hz or ~60Hz).
+5. Wait while entropy is collected.
+6. Generate a 256-bit key.
+7. Use the generated key for the encryption demo.
+
+---
+
+## Why This Is Interesting
+
+Most software relies on **pseudo-random number generators (PRNGs)**, which produce randomness from deterministic seeds.
+
+ENF Entropy Vault explores an alternative approach:
+
+> Using naturally occurring fluctuations in the power grid as a physical entropy source.
+
+Every second, millions of electrical devices switching on and off influence the grid frequency ever so slightly.
+
+Those tiny deviations become the randomness.
+
+---
+
+## Project Structure
+
+```text
 enfentropy-vault/
-├── index.html # Main web application
-├── script.js # ENF detection + RNG logic
-├── debug.html # Microphone diagnostic tool
-├── styles.css # UI styling
-├── README.md # This file
-└── assets/ # (Optional) Images and diagrams
-
-
----
-
-## 🛠️ Run Locally
-
-### Prerequisites
-- Google Chrome (recommended)
-- Python 3.x (for local server)
-
-### Steps
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/suchi00-dev/enfentropy-vault.git
-cd enfentropy-vault
-
-# 2. Start a local server
-python -m http.server 8000
-
-# 3. Open Chrome and go to
-http://localhost:8000
+├── index.html
+├── script.js
+├── debug.html
+├── styles.css
+├── README.md
+└── assets/
+```
 
 ---
 
-## 🛠️ Run Locally
+## Technical Overview
 
-### Prerequisites
-- Google Chrome (recommended)
-- Python 3.x (for local server)
+| Component | Purpose |
+|-----------|-----------|
+| Microphone Input | Captures ambient ENF signals |
+| Zero-Crossing Detection | Estimates grid frequency |
+| Entropy Extractor | Converts fluctuations into bytes |
+| SHA-256 | Conditions entropy |
+| AES-256-GCM | Encryption demonstration |
+| TensorFlow.js | Estimates entropy quality |
 
-### Steps
+---
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/suchi00-dev/enfentropy-vault.git
-cd enfentropy-vault
+## Randomness Validation
 
-# 2. Start a local server
-python -m http.server 8000
+Generated output is evaluated using statistical checks such as:
 
-# 3. Open Chrome and go to
-http://localhost:8000
+- Monobit Test
+- Runs Test
+- Chi-Square Test
 
+These tests help verify that the extracted entropy exhibits desirable random properties.
 
+---
+
+## Research Inspiration
+
+This project draws inspiration from published work on:
+
+- Electrical Network Frequency (ENF)
+- Random number generation
+- Multimedia forensics
+- Entropy extraction techniques
+
+It serves as both an educational experiment and a practical demonstration of unconventional entropy sources.
+
+---
+
+## ⚠️ Disclaimer
+
+This project is intended for **research, education, and experimentation**.
+
+Although cryptographic primitives and statistical tests are used, this implementation has **not undergone formal security review** and should not be considered a drop-in replacement for production-grade hardware security modules.
+
+---
+
+## License
+
+Released under the **MIT License**.
+
+Feel free to use, modify, and build upon it.
+
+---
+
+## Author
+
+**Suchi00-dev**
+
+GitHub:
+https://github.com/suchi00-dev
+
+Repository:
+https://github.com/suchi00-dev/enfentropy-vault
+
+---
