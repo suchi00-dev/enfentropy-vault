@@ -1,7 +1,3 @@
-// ============================================
-// ENF ENTROPY VAULT - COMPLETE WITH ENCRYPTION
-// Encryption demo shows automatically after key generation
-// ============================================
 
 // DOM Elements
 const micBtn = document.getElementById('micBtn');
@@ -28,7 +24,7 @@ const entropyProgressFill = document.getElementById('entropyProgressFill');
 const entropyRateSpan = document.getElementById('entropyRate');
 const totalEntropySpan = document.getElementById('totalEntropy');
 
-// Audio variables
+// Audiovariables
 let audioContext = null;
 let mediaStream = null;
 let analyser = null;
@@ -38,24 +34,24 @@ let entropyBytes = [];
 let freqHistory = [];
 let sampleRate = 48000;
 
-// Canvas variables
+// Canvasvariables
 let canvas = null;
 let ctx = null;
 let entropyFlowCanvas = null;
 let entropyFlowCtx = null;
 
-// Encryption variables
+// Encryptvariables
 let lastRandomKey = null;
 let lastKeyBytes = null;
 let lastEncryptedData = null;
 
-// Entropy flow variables
+// Entropyflowvariables
 let entropyFlowData = new Array(200).fill(0);
 let lastEntropyCount = 0;
 let lastEntropyTime = Date.now();
 let qualityHistory = [];
 
-// ========== MICROPHONE SETUP ==========
+// MICROPHONE
 async function enableMicrophone() {
     try {
         statusDiv.innerHTML = '🎤 Requesting microphone access...';
@@ -81,7 +77,7 @@ async function enableMicrophone() {
             await audioContext.resume();
         }
         
-        statusDiv.innerHTML = '✅ Microphone active! Place near wall outlet or tap desk.';
+        statusDiv.innerHTML = 'Microphone ACTIVE! Place near wall outlet or tap desk.';
         enfCard.classList.remove('hidden');
         entropyFlowCard.classList.remove('hidden');
         rngCard.classList.remove('hidden');
@@ -90,12 +86,12 @@ async function enableMicrophone() {
         setupEntropyVisualization();
         
     } catch (error) {
-        statusDiv.innerHTML = '❌ Error: ' + error.message;
+        statusDiv.innerHTML = ' ERROR: ' + error.message;
         console.error(error);
     }
 }
 
-// ========== FREQUENCY DETECTION ==========
+// FREQUENCYDETECT
 function detectFrequency(timeData, sampleRate) {
     let zeroCrossings = 0;
     let lastSign = 0;
@@ -132,7 +128,7 @@ function detectFrequency(timeData, sampleRate) {
     return null;
 }
 
-// ========== START ENF DETECTION ==========
+// STARTENFDETECTION 
 function startENFDetection() {
     canvas = document.getElementById('enfCanvas');
     ctx = canvas.getContext('2d');
@@ -184,7 +180,7 @@ function startENFDetection() {
                     entropyProgressFill.style.width = `${Math.min(progressPercent, 100)}%`;
                 }
                 
-                // Update quality
+                // Updatequality
                 if (entropyBytes.length > 50) {
                     const recent = entropyBytes.slice(-50);
                     const unique = new Set(recent).size;
@@ -197,7 +193,7 @@ function startENFDetection() {
             freqValueSpan.textContent = lastGoodFreq.toFixed(4) + ' (acquiring)';
         }
         
-        // Draw graph
+        // Drawgraph
         freqDisplayHistory.push(currentFrequency);
         freqDisplayHistory.shift();
         
@@ -231,7 +227,6 @@ function startENFDetection() {
     update();
 }
 
-// ========== ENTROPY FLOW VISUALIZATION ==========
 function setupEntropyVisualization() {
     entropyFlowCanvas = document.getElementById('entropyCanvas');
     entropyFlowCtx = entropyFlowCanvas.getContext('2d');
@@ -276,7 +271,7 @@ function updateEntropyFlow() {
     requestAnimationFrame(updateEntropyFlow);
 }
 
-// ========== ML TREND ANALYSIS ==========
+// ML ANALYSIS
 function updateMLPrediction() {
     if (entropyBytes.length < 50) return;
     
@@ -302,7 +297,7 @@ function updateMLPrediction() {
 
 setInterval(updateMLPrediction, 2000);
 
-// ========== GENERATE RANDOM KEY ==========
+//
 async function generateRandomKey() {
     if (entropyBytes.length < 256) {
         randomKeyDiv.innerHTML = `⏳ Need more entropy... ${entropyBytes.length}/256 bytes. Keep microphone running.`;
@@ -320,17 +315,17 @@ async function generateRandomKey() {
     const hexString = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
     randomKeyDiv.innerHTML = hexString;
     
-    // Save for encryption
+    // Saveforencryption
     lastRandomKey = hexString;
     lastKeyBytes = hashArray;
     
-    // SHOW ENCRYPTION CARD - THIS IS THE FIX
+    // ENCRYPTIONCARD 
     encryptCard.classList.remove('hidden');
     
     statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages below.";
 }
 
-// ========== ENCRYPTION FEATURES ==========
+
 async function encryptWithENFKey() {
     if (!lastRandomKey || !lastKeyBytes) {
         statusDiv.innerHTML = '⚠️ Generate a random key first using the button above!';
@@ -410,7 +405,7 @@ async function decryptWithENFKey() {
     }
 }
 
-// ========== EXPORT ENTROPY ==========
+
 function exportEntropy() {
     if (entropyBytes.length === 0) {
         statusDiv.innerHTML = '⚠️ No entropy collected yet!';
@@ -438,7 +433,7 @@ function exportEntropy() {
     statusDiv.innerHTML = '✅ Entropy exported for research!';
 }
 
-// ========== COPY TO CLIPBOARD ==========
+// CLIPBOARD
 function copyToClipboard() {
     const keyText = randomKeyDiv.innerText;
     if (keyText && keyText !== '--' && !keyText.includes('Need') && !keyText.includes('Generating')) {
@@ -452,7 +447,7 @@ function copyToClipboard() {
     }
 }
 
-// ========== CLEANUP ==========
+
 window.addEventListener('beforeunload', () => {
     if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
@@ -465,7 +460,7 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// ========== EVENT LISTENERS ==========
+
 micBtn.addEventListener('click', enableMicrophone);
 generateBtn.addEventListener('click', generateRandomKey);
 exportBtn.addEventListener('click', exportEntropy);
