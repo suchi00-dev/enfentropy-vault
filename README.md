@@ -1,12 +1,9 @@
-# ⚡ ENF Entropy Vault
+#  ENF Entropy Vault
 
 > Turn the invisible hum of the power grid into cryptographic randomness — using nothing more than your laptop microphone.
 
 
-![JavaScript](https://img.shields.io/badge/Built%20With-JavaScript-F7DF1E)
-![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.x-orange)
-![Status](https://img.shields.io/badge/Status-Experimental-blue)
-![Offline](https://img.shields.io/badge/Works-Offline-success)
+
 
 ---
 
@@ -26,16 +23,16 @@ Just your browser.
 
 ---
 
-## ✨ Features
+##  Features
 
-- 🎤 Captures ambient 50Hz/60Hz ENF signals using your microphone
-- ⚡ Extracts entropy from real-world frequency fluctuations
-- 🔐 Generates cryptographic **256-bit keys**
-- 🛡️ Uses **SHA-256** for entropy conditioning
-- 🔒 Demonstrates **AES-256-GCM encryption**
-- 📊 Performs randomness validation tests
-- 🧠 Includes entropy quality estimation using TensorFlow.js
-- 🌐 Runs entirely inside the browser
+-  Captures ambient 50Hz/60Hz ENF signals using your microphone
+-  Extracts entropy from real-world frequency fluctuations
+-  Generates cryptographic **256-bit keys**
+-  Uses **SHA-256** for entropy conditioning
+-  Demonstrates **AES-256-GCM encryption**
+-  Performs randomness validation tests
+-  Includes entropy quality estimation using TensorFlow.js
+-  Runs entirely inside the browser
 
 ---
 
@@ -59,7 +56,7 @@ AES Encryption Demo
 
 ---
 
-## 🚀 Live Demo
+##  Live Demo
 
 ### Main Application
 
@@ -172,7 +169,7 @@ It serves as both an educational experiment and a practical demonstration of unc
 
 ---
 
-## ⚠️ Disclaimer
+##  Disclaimer
 
 This project is intended for **research, education, and experimentation**.
 
@@ -180,13 +177,6 @@ Although cryptographic primitives and statistical tests are used, this implement
 
 ---
 
-## License
-
-Released under the **MIT License**.
-
-Feel free to use, modify, and build upon it.
-
----
 
 ## Author
 
