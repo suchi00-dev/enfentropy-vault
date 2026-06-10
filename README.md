@@ -1,9 +1,6 @@
-#  ENF Entropy Vault
+# ENF Entropy Vault
 
 > Turn the invisible hum of the power grid into cryptographic randomness — using nothing more than your laptop microphone.
-
-
-
 
 ---
 
@@ -23,22 +20,22 @@ Just your browser.
 
 ---
 
-##  Features
+## Features
 
--  Captures ambient 50Hz/60Hz ENF signals using your microphone
--  Extracts entropy from real-world frequency fluctuations
--  Generates cryptographic **256-bit keys**
--  Uses **SHA-256** for entropy conditioning
--  Demonstrates **AES-256-GCM encryption**
--  Performs randomness validation tests
--  Includes entropy quality estimation using TensorFlow.js
--  Runs entirely inside the browser
+* Captures ambient 50Hz/60Hz ENF signals using your microphone
+* Extracts entropy from real-world frequency fluctuations
+* Generates cryptographic **256-bit keys**
+* Uses **SHA-256** for entropy conditioning
+* Demonstrates **AES-256-GCM encryption**
+* Performs randomness validation tests
+* Includes entropy quality estimation using TensorFlow.js
+* Runs entirely inside the browser
 
 ---
 
 ## How It Works
 
-```
+```text
 Power Grid Hum
        ↓
  Laptop Microphone
@@ -56,7 +53,7 @@ AES Encryption Demo
 
 ---
 
-##  Live Demo
+## Live Demo
 
 ### Main Application
 
@@ -85,7 +82,7 @@ python -m http.server 8000
 
 Open your browser:
 
-```
+```text
 http://localhost:8000
 ```
 
@@ -133,14 +130,14 @@ enfentropy-vault/
 
 ## Technical Overview
 
-| Component | Purpose |
-|-----------|-----------|
-| Microphone Input | Captures ambient ENF signals |
-| Zero-Crossing Detection | Estimates grid frequency |
-| Entropy Extractor | Converts fluctuations into bytes |
-| SHA-256 | Conditions entropy |
-| AES-256-GCM | Encryption demonstration |
-| TensorFlow.js | Estimates entropy quality |
+| Component               | Purpose                          |
+| ----------------------- | -------------------------------- |
+| Microphone Input        | Captures ambient ENF signals     |
+| Zero-Crossing Detection | Estimates grid frequency         |
+| Entropy Extractor       | Converts fluctuations into bytes |
+| SHA-256                 | Conditions entropy               |
+| AES-256-GCM             | Encryption demonstration         |
+| TensorFlow.js           | Estimates entropy quality        |
 
 ---
 
@@ -148,9 +145,9 @@ enfentropy-vault/
 
 Generated output is evaluated using statistical checks such as:
 
-- Monobit Test
-- Runs Test
-- Chi-Square Test
+* Monobit Test
+* Runs Test
+* Chi-Square Test
 
 These tests help verify that the extracted entropy exhibits desirable random properties.
 
@@ -160,23 +157,34 @@ These tests help verify that the extracted entropy exhibits desirable random pro
 
 This project draws inspiration from published work on:
 
-- Electrical Network Frequency (ENF)
-- Random number generation
-- Multimedia forensics
-- Entropy extraction techniques
+* Electrical Network Frequency (ENF)
+* Random number generation
+* Multimedia forensics
+* Entropy extraction techniques
 
-It serves as both an educational experiment and a practical demonstration of unconventional entropy sources.
+### Machine Learning Dataset
+
+The machine learning component of **ENF Entropy Vault** was trained using the **ENF-WHU Dataset**, a publicly available collection of real-world Electrical Network Frequency recordings developed to support ENF research.
+
+The dataset contains authentic ENF signals captured from power grid environments and provides valuable data for signal analysis, forensics, and entropy-related studies.
+
+Dataset Repository:
+
+https://github.com/ghua-ac/ENF-WHU-Dataset
+
+The ENF-WHU Dataset enabled the development of the TensorFlow.js-based entropy quality estimator included in this project.
+
+This work serves as both an educational experiment and a practical demonstration of unconventional entropy sources.
 
 ---
 
-##  Disclaimer
+## Disclaimer
 
 This project is intended for **research, education, and experimentation**.
 
 Although cryptographic primitives and statistical tests are used, this implementation has **not undergone formal security review** and should not be considered a drop-in replacement for production-grade hardware security modules.
 
 ---
-
 
 ## Author
 
