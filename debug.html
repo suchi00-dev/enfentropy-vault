@@ -65,13 +65,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔧 ENF MICROPHONE DEBUGGER</h1>
+        <h1> ENF MICROPHONE DEBUGGER</h1>
         <p>This tool shows you exactly what frequencies your microphone is picking up.</p>
 
         <div class="card">
             <h2>Step 1: Enable Microphone</h2>
             <button id="micBtn">🎤 Enable Microphone</button>
-            <div id="status" class="status">⚪ Not enabled</div>
+            <div id="status" class="status"> Not enabled</div>
         </div>
 
         <div id="debugCard" class="card" style="display:none;">
@@ -89,7 +89,7 @@
     </div>
 
     <script>
-        // DOM elements
+        // DOMelements
         const micBtn = document.getElementById('micBtn');
         const statusDiv = document.getElementById('status');
         const debugCard = document.getElementById('debugCard');
@@ -98,7 +98,7 @@
         const explanationDiv = document.getElementById('explanation');
         const logDiv = document.getElementById('log');
         
-        // Audio variables
+        // Audiovariables
         let audioContext = null;
         let mediaStream = null;
         let analyser = null;
@@ -106,7 +106,7 @@
         let canvas = null;
         let ctx = null;
         
-        // Log function
+        // Logfunction
         function addLog(message, type = 'info') {
             const entry = document.createElement('div');
             const time = new Date().toLocaleTimeString();
@@ -119,20 +119,20 @@
             console.log(message);
         }
         
-        // ========== ENF FREQUENCY DETECTION ==========
+        
         function detectFrequency(timeData, sampleRate) {
             let zeroCrossings = 0;
             let lastSign = 0;
             let started = false;
             let maxAmplitude = 0;
             
-            // Find max amplitude
+            // max amplitude
             for (let i = 0; i < timeData.length; i++) {
                 const val = Math.abs((timeData[i] - 128) / 128);
                 if (val > maxAmplitude) maxAmplitude = val;
             }
             
-            // Count zero crossings
+            // Count zerocrossings
             for (let i = 0; i < timeData.length; i++) {
                 const value = (timeData[i] - 128) / 128;
                 const sign = Math.sign(value);
@@ -157,16 +157,16 @@
             return null;
         }
         
-        // ========== GET DOMINANT FREQUENCY FROM FFT ==========
+        
         function getDominantFrequency(timeData, sampleRate) {
-            // Convert to float array
+            // float array
             const floatData = new Float32Array(timeData.length);
             for (let i = 0; i < timeData.length; i++) {
                 floatData[i] = (timeData[i] - 128) / 128;
             }
             
-            // Simple FFT approximation (find peaks in time domain)
-            // This is more reliable for low frequencies
+            
+            
             
             let peaks = 0;
             let lastPeak = -1;
@@ -181,14 +181,14 @@
             if (peaks < 2) return null;
             
             // Average period between peaks
-            // This is a simplified approach
+            
             const freq = (peaks / 2) * (sampleRate / floatData.length);
             
             if (freq > 40 && freq < 70) return freq;
             return null;
         }
         
-        // ========== DRAW SPECTRUM VISUALIZATION ==========
+       
         function drawSpectrum(timeData, sampleRate, detectedFreq) {
             if (!ctx) return;
             
@@ -198,7 +198,7 @@
             ctx.fillStyle = '#0a0a1a';
             ctx.fillRect(0, 0, width, height);
             
-            // Draw the waveform
+            // waveform
             ctx.beginPath();
             ctx.strokeStyle = '#00d2ff';
             ctx.lineWidth = 1;
@@ -219,7 +219,7 @@
             }
         }
         
-        // ========== START DEBUGGING ==========
+        // DEBUGGING
         async function startDebug() {
             addLog('Starting microphone debug...', 'info');
             
@@ -324,7 +324,7 @@
             }
         }
         
-        // ========== CLEANUP ==========
+        
         function cleanup() {
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
@@ -337,7 +337,7 @@
             }
         }
         
-        // ========== EVENT LISTENERS ==========
+        
         micBtn.addEventListener('click', () => {
             cleanup();
             startDebug();
