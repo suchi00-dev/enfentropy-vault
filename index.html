@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENF Entropy Vault | True Random Numbers from Wall Hum</title>
+    <title>ENF Entropy Vault </title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -139,14 +140,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>⚡ ENF ENTROPY VAULT</h1>
-        <div class="subtitle">True Random Numbers from the 50/60Hz Hum in Your Walls</div>
+        <h1> ENF ENTROPY VAULT</h1>
+        <div class="subtitle">True Random Numbers from the 50/60Hz Hum in Your Walls <span style="display:inline-block; background:#f7971e; color:#1a1a2e; padding:2px 12px; border-radius:12px; font-size:11px; font-weight:bold;">ML-Powered</span></div>
 
         
         <div class="card">
             <h2>Step 1: Enable Microphone</h2>
             <button id="micBtn">🎤 Enable Microphone</button>
-            <div id="status" class="status">⚪ Waiting for your click...</div>
+            <div id="status" class="status"> Waiting for your click...</div>
         </div>
 
         
@@ -154,11 +155,11 @@
             <h2>Live ENF Signal (Grid Hum)</h2>
             <canvas id="enfCanvas" width="800" height="200"></canvas>
             <div class="stats">
-                <div class="stat-box">📊 Current: <strong id="freqValue">--</strong> Hz</div>
-                <div class="stat-box">🎲 Entropy: <strong id="entropyCount">0</strong> bytes</div>
-                <div class="stat-box">⭐ Quality: <strong id="qualityIndicator">--</strong></div>
-                <div class="stat-box">🤖 ML: <strong id="mlQuality">--</strong></div>
-                <div class="stat-box">📈 Trend: <strong id="entropyTrend">--</strong></div>
+                <div class="stat-box">Current: <strong id="freqValue">--</strong> Hz</div>
+                <div class="stat-box">Entropy: <strong id="entropyCount">0</strong> bytes</div>
+                <div class="stat-box">Quality: <strong id="qualityIndicator">--</strong></div>
+                <div class="stat-box">ML: <strong id="mlQuality" style="font-size:20px;">--</strong></div>
+                <div class="stat-box">Trend: <strong id="entropyTrend">--</strong></div>
             </div>
             <div class="progress-bar" id="entropyProgress">
                 <div class="progress-fill" id="entropyProgressFill"></div>
@@ -167,20 +168,20 @@
 
         
         <div id="entropyFlowCard" class="card hidden">
-            <h2>🌊 Entropy Flow Visualization</h2>
+            <h2> Entropy Flow Visualization</h2>
             <canvas id="entropyCanvas" width="800" height="100"></canvas>
             <div class="stats">
-                <span>📊 Entropy rate: <strong id="entropyRate">0</strong> bytes/sec</span>
-                <span>🎲 Total entropy: <strong id="totalEntropy">0</strong> bytes</span>
+                <span> Entropy rate: <strong id="entropyRate">0</strong> bytes/sec</span>
+                <span> Total entropy: <strong id="totalEntropy">0</strong> bytes</span>
             </div>
         </div>
 
         
         <div id="rngCard" class="card hidden">
             <h2>Generate Random Numbers</h2>
-            <button id="generateBtn">🔐 Generate 256-bit Key</button>
-            <button id="exportBtn" class="btn-export">💾 Export Entropy as JSON</button>
-            <button id="copyBtn" class="btn-export">📋 Copy to Clipboard</button>
+            <button id="generateBtn"> Generate 256-bit Key</button>
+            <button id="exportBtn" class="btn-export"> Export Entropy as JSON</button>
+            <button id="copyBtn" class="btn-export"> Copy to Clipboard</button>
             <div id="randomKey" class="mono">--</div>
         </div>
 

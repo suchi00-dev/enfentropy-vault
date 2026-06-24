@@ -50,6 +50,11 @@ let entropyFlowData = new Array(200).fill(0);
 let lastEntropyCount = 0;
 let lastEntropyTime = Date.now();
 let qualityHistory = [];
+let mlModel = null;
+let mlScalerMean = null;
+let mlScalerScale = null;
+let mlReady = false;
+let lastMlScore = 0.5;
 
 // MICROPHONE
 async function enableMicrophone() {
@@ -84,6 +89,7 @@ async function enableMicrophone() {
         
         startENFDetection();
         setupEntropyVisualization();
+        loadENFMLModel();
         
     } catch (error) {
         statusDiv.innerHTML = ' ERROR: ' + error.message;
@@ -187,6 +193,11 @@ function startENFDetection() {
                     const quality = (unique / 50) * 100;
                     qualityIndicatorSpan.innerHTML = quality.toFixed(0) + '%';
                     qualityIndicatorSpan.style.color = quality > 50 ? '#00ff88' : (quality > 25 ? '#ffaa00' : '#ff6666');
+                    if (mlReady && freqHistory.length >= 24) {
+                        predictEntropyQuality(freqHistory).then(score => {
+                            updateMLDisplay(score);
+                            });
+                        }
                 }
             }
         } else {
@@ -290,7 +301,7 @@ function updateMLPrediction() {
             const oldAvg = qualityHistory.slice(-10, -5).reduce((a, b) => a + b, 0) / 5;
             if (avg > oldAvg + 5) entropyTrendSpan.innerHTML = '📈 Improving';
             else if (avg < oldAvg - 5) entropyTrendSpan.innerHTML = '📉 Declining';
-            else entropyTrendSpan.innerHTML = '➡️ Stable';
+            else entropyTrendSpan.innerHTML = ' Stable';
         }
     }
 }
@@ -305,7 +316,7 @@ async function generateRandomKey() {
         return;
     }
     
-    randomKeyDiv.innerHTML = "🔐 Generating cryptographic key from grid entropy...";
+    randomKeyDiv.innerHTML = "Generating cryptographic key from grid entropy...";
     statusDiv.innerHTML = "Generating random key...";
     
     const entropyArray = new Uint8Array(entropyBytes);
@@ -322,23 +333,23 @@ async function generateRandomKey() {
     // ENCRYPTIONCARD 
     encryptCard.classList.remove('hidden');
     
-    statusDiv.innerHTML = "✅ Key generated! Now you can encrypt messages below.";
+    statusDiv.innerHTML = "Key generated! Now you can encrypt messages below.";
 }
 
 
 async function encryptWithENFKey() {
     if (!lastRandomKey || !lastKeyBytes) {
-        statusDiv.innerHTML = '⚠️ Generate a random key first using the button above!';
+        statusDiv.innerHTML = 'Generate a random key first using the button above!';
         return;
     }
     
     const message = messageInput.value;
     if (!message) {
-        statusDiv.innerHTML = '⚠️ Type a message to encrypt!';
+        statusDiv.innerHTML = 'Type a message to encrypt!';
         return;
     }
     
-    statusDiv.innerHTML = '🔒 Encrypting with ENF entropy key...';
+    statusDiv.innerHTML = ' Encrypting with ENF entropy key...';
     
     try {
         const cryptoKey = await crypto.subtle.importKey(
@@ -365,7 +376,7 @@ async function encryptWithENFKey() {
         encryptedOutputDiv.innerHTML = hexString;
         lastEncryptedData = combined;
         
-        statusDiv.innerHTML = '✅ Message encrypted with your ENF key!';
+        statusDiv.innerHTML = 'Message encrypted with your ENF key!';
     } catch (error) {
         statusDiv.innerHTML = '❌ Encryption failed: ' + error.message;
     }
@@ -373,7 +384,7 @@ async function encryptWithENFKey() {
 
 async function decryptWithENFKey() {
     if (!lastKeyBytes || !lastEncryptedData) {
-        statusDiv.innerHTML = '⚠️ No encrypted message found! Encrypt something first.';
+        statusDiv.innerHTML = ' No encrypted message found! Encrypt something first.';
         return;
     }
     
@@ -399,7 +410,7 @@ async function decryptWithENFKey() {
         
         const message = new TextDecoder().decode(decrypted);
         decryptedOutputDiv.innerHTML = message;
-        statusDiv.innerHTML = '✅ Message decrypted successfully!';
+        statusDiv.innerHTML = ' Message decrypted successfully!';
     } catch (error) {
         statusDiv.innerHTML = '❌ Decryption failed: ' + error.message;
     }
@@ -408,7 +419,7 @@ async function decryptWithENFKey() {
 
 function exportEntropy() {
     if (entropyBytes.length === 0) {
-        statusDiv.innerHTML = '⚠️ No entropy collected yet!';
+        statusDiv.innerHTML = ' No entropy collected yet!';
         return;
     }
     
@@ -430,7 +441,7 @@ function exportEntropy() {
     a.click();
     URL.revokeObjectURL(url);
     
-    statusDiv.innerHTML = '✅ Entropy exported for research!';
+    statusDiv.innerHTML = 'Entropy exported for research!';
 }
 
 // CLIPBOARD
@@ -438,12 +449,12 @@ function copyToClipboard() {
     const keyText = randomKeyDiv.innerText;
     if (keyText && keyText !== '--' && !keyText.includes('Need') && !keyText.includes('Generating')) {
         navigator.clipboard.writeText(keyText);
-        statusDiv.innerHTML = '📋 Key copied to clipboard!';
+        statusDiv.innerHTML = ' Key copied to clipboard!';
         setTimeout(() => {
-            statusDiv.innerHTML = '✅ Microphone active! Listening for grid hum...';
+            statusDiv.innerHTML = ' Microphone active! Listening for grid hum...';
         }, 2000);
     } else {
-        statusDiv.innerHTML = '⚠️ Generate a key first before copying.';
+        statusDiv.innerHTML = ' Generate a key first before copying.';
     }
 }
 
@@ -467,5 +478,72 @@ exportBtn.addEventListener('click', exportEntropy);
 copyBtn.addEventListener('click', copyToClipboard);
 encryptBtn.addEventListener('click', encryptWithENFKey);
 decryptBtn.addEventListener('click', decryptWithENFKey);
+async function loadENFMLModel() {
+    try {
+        document.getElementById('mlQuality').innerHTML = '⏳';
+        
+       
+        mlModel = await tf.loadLayersModel('web_model/model.json');
+        console.log(' ML model loaded from ENF-WHU dataset');
+        
+        const response = await fetch('scaler_params.json');
+        const scalerParams = await response.json();
+        mlScalerMean = scalerParams.mean;
+        mlScalerScale = scalerParams.scale;
+        console.log(' Scaler loaded');
+        
+        mlReady = true;
+        document.getElementById('mlQuality').innerHTML = 'Ready ';
+        
+    } catch (error) {
+        console.error('ML load error:', error);
+        document.getElementById('mlQuality').innerHTML = '⚠️';
+        mlReady = false;
+    }
+}
 
+
+async function predictEntropyQuality(freqHistory) {
+    if (!mlReady || !mlModel || freqHistory.length < 24) {
+        return 0.5;
+    }
+    
+    try {
+        const recent = freqHistory.slice(-24);
+        const normalized = recent.map((val, i) => {
+            const mean = mlScalerMean[i % mlScalerMean.length];
+            const scale = mlScalerScale[i % mlScalerScale.length] || 0.0001;
+            return (val - mean) / scale;
+        });
+        
+        const input = tf.tensor2d([normalized]);
+        const prediction = await mlModel.predict(input).data();
+        const score = Math.min(1, Math.max(0, prediction[0]));
+        lastMlScore = score;
+        return score;
+        
+    } catch (error) {
+        console.error('Prediction error:', error);
+        return 0.5;
+    }
+}
+
+
+function updateMLDisplay(score) {
+    if (score === null || score === undefined) {
+        document.getElementById('mlQuality').innerHTML = '--';
+        return;
+    }
+    
+    const percent = (score * 100).toFixed(0);
+    document.getElementById('mlQuality').innerHTML = percent + '%';
+    
+    if (score > 0.6) {
+        document.getElementById('mlQuality').style.color = '#00ff88';
+    } else if (score > 0.4) {
+        document.getElementById('mlQuality').style.color = '#ffaa00';
+    } else {
+        document.getElementById('mlQuality').style.color = '#ff6666';
+    }
+}
 console.log('ENF Entropy Vault loaded - Click "Enable Microphone" to start');
