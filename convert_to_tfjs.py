@@ -18,7 +18,7 @@ print(f" {len(weights)} weight arrays extracted")
 print("\n[3/3] Creating web_model folder...")
 os.makedirs('web_model', exist_ok=True)
 
-# Create a simple model.json
+
 model_json = {
     "format": "layers-model",
     "generatedBy": "TensorFlow.js Converter v4.10.0",
@@ -34,7 +34,7 @@ model_json = {
     }
 }
 
-# Save
+
 with open('web_model/model.json', 'w') as f:
     json.dump(model_json, f, indent=2)
 print("web_model/model.json created")
@@ -45,7 +45,4 @@ print("=" * 60)
 print("""
 Files created:
   - web_model/model.json
-
-Note: For full TensorFlow.js compatibility, 
-use the Keras model directly in Python.
 """)
