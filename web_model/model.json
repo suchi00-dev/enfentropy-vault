@@ -1,0 +1,21 @@
+{
+  "format": "layers-model",
+  "generatedBy": "TensorFlow.js Converter v4.10.0",
+  "convertedBy": "Manual conversion",
+  "modelTopology": {
+    "training_config": {
+      "loss": "mse",
+      "metrics": [
+        "mae"
+      ],
+      "optimizer_config": {
+        "class_name": "Adam",
+        "config": {
+          "learning_rate": 0.001
+        }
+      }
+    },
+    "keras_version": "2.15.0",
+    "backend": "tensorflow"
+  }
+}
